@@ -1,0 +1,74 @@
+#cloud-config
+package_update: true
+package_upgrade: false
+packages:
+  - docker.io
+  - docker-compose-v2
+  - ca-certificates
+  - curl
+
+write_files:
+  - path: /opt/craftalism/edge/Caddyfile
+    permissions: "0644"
+    owner: root:root
+    content: |
+      http://${dashboard_hostname}, http://${api_hostname}, http://${auth_hostname} {
+        redir https://{host}{uri} permanent
+      }
+
+      ${dashboard_hostname} {
+        encode zstd gzip
+        basicauth {
+          ${dashboard_basic_auth_username} ${dashboard_basic_auth_password_hash}
+        }
+        reverse_proxy 127.0.0.1:${dashboard_upstream_port}
+      }
+
+      ${api_hostname} {
+        encode zstd gzip
+        reverse_proxy 127.0.0.1:${api_upstream_port}
+      }
+
+      ${auth_hostname} {
+        encode zstd gzip
+        reverse_proxy 127.0.0.1:${auth_upstream_port}
+      }
+
+  - path: /opt/craftalism/edge/docker-compose.yml
+    permissions: "0644"
+    owner: root:root
+    content: |
+      services:
+        caddy:
+          image: ${edge_proxy_image}
+          container_name: craftalism-edge
+          restart: unless-stopped
+          ports:
+            - "80:80"
+            - "443:443"
+          volumes:
+            - /opt/craftalism/edge/Caddyfile:/etc/caddy/Caddyfile:ro
+            - /opt/craftalism/edge/data:/data
+            - /opt/craftalism/edge/config:/config
+
+  - path: /opt/craftalism/README.txt
+    permissions: "0644"
+    owner: root:root
+    content: |
+      This host is bootstrapped by craftalism-infra.
+
+      Edge proxy:
+      - Caddy config: /opt/craftalism/edge/Caddyfile
+      - Compose file: /opt/craftalism/edge/docker-compose.yml
+
+      Expected application upstream ports:
+      - Dashboard: ${dashboard_upstream_port}
+      - API: ${api_upstream_port}
+      - Auth: ${auth_upstream_port}
+
+runcmd:
+  - mkdir -p /opt/craftalism/edge/data /opt/craftalism/edge/config
+  - systemctl enable docker
+  - systemctl start docker
+  - usermod -aG docker ${operator_username}
+  - docker compose -f /opt/craftalism/edge/docker-compose.yml up -d

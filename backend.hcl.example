@@ -1,0 +1,5 @@
+bucket         = "craftalism-henrique-terraform-state"
+key            = "craftalism-infra/production/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "craftalism-henrique-terraform-locks"
+encrypt        = true
