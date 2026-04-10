@@ -236,6 +236,7 @@ This repo includes a GitHub Actions workflow that runs:
 - `terraform fmt -check`
 - `terraform init -backend=false`
 - `terraform validate`
+- `./scripts/check_ingress_policy.sh`
 
 CI runs these checks on pull requests and pushes to `main`.
 
@@ -245,6 +246,7 @@ Local verification:
 terraform fmt -check
 terraform init -backend=false
 terraform validate
+./scripts/check_ingress_policy.sh
 ```
 
 ## First Deploy
