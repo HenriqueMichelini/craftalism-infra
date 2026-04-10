@@ -25,22 +25,12 @@ variable "vpc_id" {
   description = "Existing VPC ID for the Craftalism host. Required only when create_vpc is false."
   type        = string
   default     = null
-
-  validation {
-    condition     = var.create_vpc || var.vpc_id != null
-    error_message = "vpc_id must be set when create_vpc is false."
-  }
 }
 
 variable "subnet_id" {
   description = "Existing subnet ID where the EC2 host will be created. Required only when create_vpc is false."
   type        = string
   default     = null
-
-  validation {
-    condition     = var.create_vpc || var.subnet_id != null
-    error_message = "subnet_id must be set when create_vpc is false."
-  }
 }
 
 variable "vpc_cidr" {
@@ -88,11 +78,6 @@ variable "route53_zone_id" {
   description = "Route53 hosted zone ID. Required only when create_route53_records is true."
   type        = string
   default     = null
-
-  validation {
-    condition     = !var.create_route53_records || var.route53_zone_id != null
-    error_message = "route53_zone_id must be set when create_route53_records is true."
-  }
 }
 
 variable "dashboard_hostname" {

@@ -41,6 +41,26 @@ data "aws_ami" "ubuntu" {
   }
 }
 
+check "existing_network_inputs" {
+  assert {
+    condition = (
+      var.create_vpc ||
+      (var.vpc_id != null && var.subnet_id != null)
+    )
+    error_message = "vpc_id and subnet_id must both be set when create_vpc is false."
+  }
+}
+
+check "route53_zone_input" {
+  assert {
+    condition = (
+      !var.create_route53_records ||
+      var.route53_zone_id != null
+    )
+    error_message = "route53_zone_id must be set when create_route53_records is true."
+  }
+}
+
 resource "aws_vpc" "craftalism" {
   count = var.create_vpc ? 1 : 0
 
