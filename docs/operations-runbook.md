@@ -76,6 +76,7 @@ docker ps
 docker logs craftalism-edge
 sudo cat /opt/craftalism/edge/Caddyfile
 sudo cat /etc/docker/daemon.json
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status
 ```
 
 Expected result:
@@ -85,6 +86,7 @@ Expected result:
 - `vm.swappiness` matches the configured Terraform input
 - `craftalism-edge` is running
 - Caddy is listening on `80` and `443`
+- CloudWatch Agent is running when `enable_host_metrics = true`
 
 ## Cost Checks
 
@@ -92,6 +94,7 @@ After the first apply, verify:
 
 - the configured budget exists in AWS Budgets if `budget_alert_email` was set
 - the EC2 CloudWatch alarms exist
+- host memory, swap, and root-disk alarms exist when `enable_host_metrics = true`
 - the SNS email subscription was confirmed if `alarm_notification_email` was set
 - no NAT Gateway was created
 - only the intended Elastic IP exists

@@ -206,6 +206,7 @@ resource "aws_instance" "craftalism" {
   vpc_security_group_ids      = [aws_security_group.craftalism.id]
   associate_public_ip_address = !var.associate_eip
   key_name                    = var.key_name
+  iam_instance_profile        = var.enable_host_metrics ? aws_iam_instance_profile.craftalism_host_metrics[0].name : null
   monitoring                  = var.enable_detailed_monitoring
   user_data_replace_on_change = true
 
@@ -224,6 +225,8 @@ resource "aws_instance" "craftalism" {
     vm_swappiness                      = var.vm_swappiness
     docker_log_max_size                = var.docker_log_max_size
     docker_log_max_file                = var.docker_log_max_file
+    enable_host_metrics                = var.enable_host_metrics
+    host_metrics_namespace             = var.host_metrics_namespace
   })
 
   root_block_device {
@@ -241,6 +244,41 @@ resource "aws_instance" "craftalism" {
   }
 
   tags = merge(local.common_tags, { Name = "${local.name_prefix}-ec2" })
+}
+
+resource "aws_iam_role" "craftalism_host_metrics" {
+  count = var.enable_host_metrics ? 1 : 0
+
+  name = "${local.name_prefix}-host-metrics"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = merge(local.common_tags, { Name = "${local.name_prefix}-host-metrics" })
+}
+
+resource "aws_iam_role_policy_attachment" "craftalism_host_metrics" {
+  count = var.enable_host_metrics ? 1 : 0
+
+  role       = aws_iam_role.craftalism_host_metrics[0].name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+resource "aws_iam_instance_profile" "craftalism_host_metrics" {
+  count = var.enable_host_metrics ? 1 : 0
+
+  name = "${local.name_prefix}-host-metrics"
+  role = aws_iam_role.craftalism_host_metrics[0].name
 }
 
 resource "aws_eip" "craftalism" {
@@ -356,6 +394,75 @@ resource "aws_cloudwatch_metric_alarm" "instance_cpu_credit_low" {
   }
 
   tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-cpu-credit-low" })
+}
+
+resource "aws_cloudwatch_metric_alarm" "instance_memory_high" {
+  count = var.enable_host_metrics ? 1 : 0
+
+  alarm_name          = "${local.name_prefix}-instance-memory-high"
+  alarm_description   = "In-guest memory utilization is high on the Craftalism host. Repeated alarms suggest the stack needs tighter runtime limits or a larger instance."
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 5
+  metric_name         = "mem_used_percent"
+  namespace           = var.host_metrics_namespace
+  period              = 60
+  statistic           = "Average"
+  threshold           = var.memory_utilization_alarm_threshold_percent
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+  ok_actions          = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+
+  dimensions = {
+    InstanceId = aws_instance.craftalism.id
+  }
+
+  tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-memory-high" })
+}
+
+resource "aws_cloudwatch_metric_alarm" "instance_swap_high" {
+  count = var.enable_host_metrics && var.swap_size_mb > 0 ? 1 : 0
+
+  alarm_name          = "${local.name_prefix}-instance-swap-high"
+  alarm_description   = "Swap utilization is elevated on the Craftalism host. Repeated alarms suggest sustained memory pressure on the instance."
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 5
+  metric_name         = "swap_used_percent"
+  namespace           = var.host_metrics_namespace
+  period              = 60
+  statistic           = "Average"
+  threshold           = var.swap_utilization_alarm_threshold_percent
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+  ok_actions          = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+
+  dimensions = {
+    InstanceId = aws_instance.craftalism.id
+  }
+
+  tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-swap-high" })
+}
+
+resource "aws_cloudwatch_metric_alarm" "instance_root_filesystem_high" {
+  count = var.enable_host_metrics ? 1 : 0
+
+  alarm_name          = "${local.name_prefix}-instance-root-filesystem-high"
+  alarm_description   = "Root filesystem utilization is high on the Craftalism host. Repeated alarms suggest log growth or insufficient root volume sizing."
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 5
+  metric_name         = "disk_used_percent"
+  namespace           = var.host_metrics_namespace
+  period              = 60
+  statistic           = "Average"
+  threshold           = var.root_filesystem_utilization_alarm_threshold_percent
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+  ok_actions          = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+
+  dimensions = {
+    InstanceId = aws_instance.craftalism.id
+  }
+
+  tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-root-filesystem-high" })
 }
 
 resource "aws_route53_record" "edge" {

@@ -37,6 +37,44 @@ write_files:
       SystemMaxUse=100M
       RuntimeMaxUse=50M
 
+  - path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+    permissions: "0644"
+    owner: root:root
+    content: |
+      {
+        "agent": {
+          "metrics_collection_interval": 60,
+          "run_as_user": "root"
+        },
+        "metrics": {
+          "namespace": "${host_metrics_namespace}",
+          "append_dimensions": {
+            "InstanceId": "$${aws:InstanceId}"
+          },
+          "metrics_collected": {
+            "mem": {
+              "measurement": [
+                "used_percent"
+              ]
+            },
+            "swap": {
+              "measurement": [
+                "used_percent"
+              ]
+            },
+            "disk": {
+              "measurement": [
+                "used_percent"
+              ],
+              "resources": [
+                "/"
+              ],
+              "drop_device": true
+            }
+          }
+        }
+      }
+
   - path: /usr/local/bin/craftalism-host-optimize.sh
     permissions: "0755"
     owner: root:root
@@ -64,6 +102,22 @@ write_files:
 
       sysctl --system
       systemctl restart systemd-journald || true
+
+      if [ "${enable_host_metrics}" = "true" ]; then
+        cloudwatch_agent_deb='/tmp/amazon-cloudwatch-agent.deb'
+        cloudwatch_agent_url='https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb'
+
+        if ! dpkg -s amazon-cloudwatch-agent >/dev/null 2>&1; then
+          curl -fsSL "$${cloudwatch_agent_url}" -o "$${cloudwatch_agent_deb}"
+          dpkg -i -E "$${cloudwatch_agent_deb}"
+        fi
+
+        /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+          -a fetch-config \
+          -m ec2 \
+          -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json \
+          -s
+      fi
 
   - path: /opt/craftalism/edge/Caddyfile
     permissions: "0644"
@@ -125,6 +179,7 @@ write_files:
       - Swap file: ${swap_size_mb} MiB
       - vm.swappiness: ${vm_swappiness}
       - Docker log rotation: ${docker_log_max_size} x ${docker_log_max_file}
+      - CloudWatch host metrics: ${enable_host_metrics}
 
 runcmd:
   - mkdir -p /opt/craftalism/edge/data /opt/craftalism/edge/config

@@ -11,7 +11,7 @@ This repository provisions the minimum AWS resources required by the 2026-04-08 
 - optional Elastic IP and Route53 records for stable public endpoints
 - optional repo-local AWS cost budget alerts for supplemental monthly cost visibility
 - host bootstrap for Docker, host memory guardrails, and a Caddy edge proxy with automatic TLS
-- EC2 observability through detailed monitoring and CloudWatch alarms
+- EC2 observability through detailed monitoring, optional in-guest host metrics, and CloudWatch alarms
 
 It does not replace `craftalism-deployment`. Runtime composition, container image versions, and application environment wiring remain owned by that repository.
 
@@ -105,6 +105,7 @@ For small instances, keep the default host guardrails unless you have measured r
 For host-level pressure visibility, keep:
 
 - `enable_detailed_monitoring = true`
+- `enable_host_metrics = true`
 - `alarm_notification_email` set to a mailbox you actively read
 
 4. Decide whether this first apply should create the network:
@@ -200,6 +201,7 @@ This repo now bootstraps:
 - a lower `vm.swappiness` value
 - Docker log rotation defaults
 - capped systemd-journald disk usage
+- optional CloudWatch Agent host metrics for memory, swap, and root filesystem usage
 
 These changes reduce OOM risk on small EC2 instances, but they do not replace runtime-side container memory limits in `craftalism-deployment`.
 
@@ -224,9 +226,16 @@ Terraform also creates a minimal CloudWatch alarm set for the EC2 host:
 - sustained high CPU utilization
 - low CPU credit balance on burstable `t*` instance families
 
+When `enable_host_metrics = true`, Terraform also:
+
+- attaches the `CloudWatchAgentServerPolicy` through an EC2 instance profile
+- installs the Amazon CloudWatch Agent during bootstrap
+- publishes `mem_used_percent`, `swap_used_percent`, and root `disk_used_percent`
+- creates memory, swap, and root-filesystem utilization alarms
+
 If `alarm_notification_email` is set, Terraform also creates an SNS topic and email subscription for those alarms. AWS will send a confirmation email before notifications begin.
 
-These alarms help determine whether the host is unhealthy, CPU-bound, or exhausting burst credits. They do not provide memory, swap, or per-disk filesystem usage metrics. Those remain a future infra enhancement or a deployment/runtime concern depending on what needs to be measured.
+These alarms help determine whether the host is unhealthy, CPU-bound, exhausting burst credits, or under sustained in-guest memory, swap, or root-disk pressure. CloudWatch Agent metrics are custom metrics and can increase CloudWatch cost, so `enable_host_metrics` remains optional.
 
 ## Bootstrap Behavior
 
@@ -248,6 +257,7 @@ Host-level memory tuning created by this repo:
 - `/etc/sysctl.d/99-craftalism-memory.conf`
 - `/etc/docker/daemon.json` log rotation defaults
 - `/etc/systemd/journald.conf.d/craftalism.conf`
+- `/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json` when `enable_host_metrics = true`
 
 ## Validation
 

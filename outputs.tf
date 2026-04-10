@@ -54,5 +54,8 @@ output "instance_alarm_names" {
     aws_cloudwatch_metric_alarm.instance_status_check_failed.alarm_name,
     aws_cloudwatch_metric_alarm.instance_cpu_high.alarm_name,
     try(aws_cloudwatch_metric_alarm.instance_cpu_credit_low[0].alarm_name, null),
+    try(aws_cloudwatch_metric_alarm.instance_memory_high[0].alarm_name, null),
+    try(aws_cloudwatch_metric_alarm.instance_swap_high[0].alarm_name, null),
+    try(aws_cloudwatch_metric_alarm.instance_root_filesystem_high[0].alarm_name, null),
   ])
 }

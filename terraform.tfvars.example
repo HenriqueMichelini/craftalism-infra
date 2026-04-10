@@ -7,6 +7,7 @@ enable_detailed_monitoring = true
 ami_id             = "ami-xxxxxxxxxxxxxxxxx"
 swap_size_mb       = 1024
 vm_swappiness      = 10
+enable_host_metrics = true
 docker_log_max_size = "10m"
 docker_log_max_file = 3
 

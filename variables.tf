@@ -56,6 +56,18 @@ variable "enable_detailed_monitoring" {
   default     = true
 }
 
+variable "enable_host_metrics" {
+  description = "Whether to install the Amazon CloudWatch Agent on the EC2 host and publish memory, swap, and root-disk usage metrics."
+  type        = bool
+  default     = false
+}
+
+variable "host_metrics_namespace" {
+  description = "CloudWatch namespace used for custom in-guest host metrics published by the CloudWatch Agent."
+  type        = string
+  default     = "CWAgent"
+}
+
 variable "swap_size_mb" {
   description = "Swap file size in MiB created on the EC2 host to reduce OOM risk on small instances. Set to 0 to disable swap creation."
   type        = number
@@ -257,6 +269,39 @@ variable "cpu_credit_balance_alarm_threshold" {
   validation {
     condition     = var.cpu_credit_balance_alarm_threshold >= 0
     error_message = "cpu_credit_balance_alarm_threshold must be zero or greater."
+  }
+}
+
+variable "memory_utilization_alarm_threshold_percent" {
+  description = "Average in-guest memory utilization percentage that triggers the CloudWatch Agent memory-pressure alarm."
+  type        = number
+  default     = 90
+
+  validation {
+    condition     = var.memory_utilization_alarm_threshold_percent > 0 && var.memory_utilization_alarm_threshold_percent <= 100
+    error_message = "memory_utilization_alarm_threshold_percent must be between 1 and 100."
+  }
+}
+
+variable "swap_utilization_alarm_threshold_percent" {
+  description = "Average swap utilization percentage that triggers the CloudWatch Agent swap-pressure alarm when swap is enabled."
+  type        = number
+  default     = 50
+
+  validation {
+    condition     = var.swap_utilization_alarm_threshold_percent >= 0 && var.swap_utilization_alarm_threshold_percent <= 100
+    error_message = "swap_utilization_alarm_threshold_percent must be between 0 and 100."
+  }
+}
+
+variable "root_filesystem_utilization_alarm_threshold_percent" {
+  description = "Average root filesystem utilization percentage that triggers the CloudWatch Agent disk-pressure alarm."
+  type        = number
+  default     = 85
+
+  validation {
+    condition     = var.root_filesystem_utilization_alarm_threshold_percent > 0 && var.root_filesystem_utilization_alarm_threshold_percent <= 100
+    error_message = "root_filesystem_utilization_alarm_threshold_percent must be between 1 and 100."
   }
 }
 
