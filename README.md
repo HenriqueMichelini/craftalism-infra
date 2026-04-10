@@ -176,6 +176,9 @@ Cloud-init installs Docker, writes a Caddy config, and starts an edge proxy cont
 - applies basic auth to the dashboard hostname
 - proxies API and auth hostnames without exposing their raw ports publicly
 
+The edge container runs in host network mode so its `localhost` upstreams reach
+the loopback-only ports published by `craftalism-deployment` on the EC2 host.
+
 Application containers are still expected to be started separately from `craftalism-deployment`.
 
 ## Validation

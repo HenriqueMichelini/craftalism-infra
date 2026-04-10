@@ -43,9 +43,7 @@ write_files:
           image: ${edge_proxy_image}
           container_name: craftalism-edge
           restart: unless-stopped
-          ports:
-            - "80:80"
-            - "443:443"
+          network_mode: host
           volumes:
             - /opt/craftalism/edge/Caddyfile:/etc/caddy/Caddyfile:ro
             - /opt/craftalism/edge/data:/data
