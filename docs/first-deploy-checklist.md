@@ -74,6 +74,7 @@ Use this checklist before the first real `terraform plan` and first EC2 deployme
 - Set `monthly_budget_limit_usd` to a low number such as `5`.
 - Remember AWS Budgets sends alerts only; it does not block charges.
 - Treat this budget as total AWS cost alerting for the deployment boundary, not just EC2 compute.
+- If account-level AWS budget controls already exist outside this repo, prefer leaving `budget_alert_email = null` to avoid duplicate budget ownership.
 - Avoid surprise-cost services during first deploy:
   - NAT Gateway
   - load balancers

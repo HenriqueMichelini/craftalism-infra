@@ -9,7 +9,7 @@ This repository provisions the minimum AWS resources required by the 2026-04-08 
 - one security group that exposes Minecraft plus HTTP/HTTPS edge entry points
 - optional SSH restricted to explicit operator CIDRs
 - optional Elastic IP and Route53 records for stable public endpoints
-- optional AWS cost budget alerts for monthly cost guardrails
+- optional repo-local AWS cost budget alerts for supplemental monthly cost visibility
 - host bootstrap for Docker, host memory guardrails, and a Caddy edge proxy with automatic TLS
 
 It does not replace `craftalism-deployment`. Runtime composition, container image versions, and application environment wiring remain owned by that repository.
@@ -199,12 +199,14 @@ These changes reduce OOM risk on small EC2 instances, but they do not replace ru
 
 ## Cost Guardrails
 
-If `budget_alert_email` is set, Terraform creates a monthly AWS cost budget with alerts at:
+If `budget_alert_email` is set, Terraform creates a repo-local monthly AWS cost budget with alerts at:
 
 - 80% of the configured limit
 - 100% of the configured limit
 
 This is an alerting mechanism only. AWS Budgets does not hard-stop spending.
+
+If you already enforce account-level AWS budget controls outside this repo, leave `budget_alert_email = null` and treat the repo-local budget as unnecessary or supplemental only.
 
 ## Bootstrap Behavior
 
