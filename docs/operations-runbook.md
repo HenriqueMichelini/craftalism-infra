@@ -45,6 +45,7 @@ terraform plan -out=tfplan
    - VPC or subnet recreation
    - security group ingress
    - instance replacement
+   - monitoring or alarm threshold changes
    - budget changes
    - DNS record changes
 4. Apply only after the plan is understood:
@@ -90,6 +91,8 @@ Expected result:
 After the first apply, verify:
 
 - the configured budget exists in AWS Budgets if `budget_alert_email` was set
+- the EC2 CloudWatch alarms exist
+- the SNS email subscription was confirmed if `alarm_notification_email` was set
 - no NAT Gateway was created
 - only the intended Elastic IP exists
 - the EC2 instance type is still within your planned spend envelope

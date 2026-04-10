@@ -1,131 +1,90 @@
-# AGENTS.md — craftalism-infra
+# AGENTS.md
 
 ## Purpose
-This repository is part of the Craftalism ecosystem and MUST follow all shared contracts, standards, and governance rules defined in the root Craftalism documentation.
 
-This agent (Codex) operates under a strict **audit → implement → re-verify** workflow.
-
----
-
-## Core Workflow
-
-### 1. Audit (READ-ONLY)
-- Analyze the repository against:
-  - Craftalism shared contracts
-  - Craftalism standards (CI/CD, security, testing, documentation)
-  - Industry best practices (infra, DevOps, cloud architecture)
-- Identify:
-  - Contract violations
-  - Performance bottlenecks
-  - Reliability risks
-  - Security gaps
-  - Maintainability issues
-
-🚨 Do NOT implement changes during audit.
+This repository owns infrastructure definitions, environment configuration, provisioning, public exposure model, and operational infrastructure concerns within the Craftalism ecosystem.
 
 ---
 
-### 2. Implement
-- Apply fixes based on audit findings
-- Changes MUST:
-  - Follow Craftalism contracts and standards
-  - Be production-grade and senior-level quality
-  - Preserve system behavior (no breaking changes unless explicitly required)
-  - Improve:
-    - Performance
-    - Reliability
-    - Observability
-    - Security
+## Core Rules
 
-- Prefer:
-  - Incremental, safe changes
-  - Clear structure and modularity
-  - Infrastructure-as-Code best practices
-  - Deterministic and reproducible environments
+- Work only within this repository's owned responsibilities
+- Do not redefine shared contracts or cross-repo behavior
+- Do not perform unrelated refactors
+- Prefer the smallest correct change
+- Maintain senior-level quality in code, design, and security
+- Improve performance only if correctness and stability are preserved
 
 ---
 
-### 3. Re-verify
-- Validate that:
-  - All identified issues are resolved
-  - No regressions were introduced
-  - Contracts are fully respected
-  - System behavior remains correct
+## Ownership Requirement
 
-- Ensure:
-  - CI/CD passes
-  - Runtime assumptions hold
-  - Deployment flow is stable
+Before acting, state:
+
+- whether this repository owns or consumes the behavior
+
+Do not proceed without establishing ownership.
 
 ---
 
-## Non-Negotiable Rules
+## Boundary Rule
 
-- Follow **Craftalism governance as the single source of truth**
-- Do NOT redefine cross-repo contracts
-- Do NOT introduce conflicting patterns
-- Do NOT bypass standards for convenience
+If an issue originates outside this repository:
 
----
+- stop at the boundary
+- identify the owning repository
+- suggest what should be changed there
 
-## Quality Bar
-
-All changes MUST reflect **senior-level engineering standards**:
-
-- Clean, readable, maintainable code
-- Strong architectural decisions
-- Explicit and safe configurations
-- Proper error handling and fail-fast behavior
-- Secure by default (least privilege, deny-by-default)
-- Observability-ready (logs, healthchecks, metrics where applicable)
+Do not implement cross-repo changes locally.
 
 ---
 
-## Performance Requirement
+## Workflow
 
-Performance improvements are **mandatory but safe**:
+Use:
 
-- Optimize without breaking behavior
-- Avoid premature optimization
-- Focus on:
-  - Resource efficiency
-  - Startup time
-  - Deployment speed
-  - Runtime stability
+triage → audit → implement → reverify
 
-- Any optimization MUST:
-  - Be measurable or justifiable
-  - Not compromise correctness
+Or:
 
----
+audit → implement → reverify
 
-## Infra-Specific Expectations
+### Audit
+- read-only
+- identify confirmed issues only
 
-- Deterministic environments (no hidden defaults)
-- Fail-fast production configuration
-- Clear separation of environments (dev/staging/prod)
-- Idempotent deployments
-- Minimal and secure surface area
-- Explicit dependency management
+### Implement
+- implement only confirmed repo-local issues
+- validate changes when possible
+- suggest commit message(s)
+
+### Reverify
+- read-only
+- confirm fixes and check regressions
 
 ---
 
-## Output Expectations
+## Source of Truth
 
-When acting, the agent MUST:
-- Be precise and structured
-- Justify decisions when non-obvious
-- Avoid unnecessary complexity
-- Prefer clarity over cleverness
+When needed, consult:
+
+- repo-local docs (, )
+- Craftalism root docs (contracts, standards, governance)
+
+If conflicts exist, follow governance precedence.
 
 ---
 
-## Summary
+## Commit Requirement
 
-This repository must:
-- Fully comply with Craftalism rules
-- Maintain high engineering standards
-- Improve performance safely
-- Follow audit → implement → re-verify strictly
+After implementation, suggest commit message(s) that:
 
-Failure to follow these principles is not acceptable.
+- reflect only the implemented change
+- are specific and scoped
+- do not mix unrelated work
+
+---
+
+## Additional Guidance
+
+Follow the Codex Usage Checklist when applicable.

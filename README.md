@@ -11,6 +11,7 @@ This repository provisions the minimum AWS resources required by the 2026-04-08 
 - optional Elastic IP and Route53 records for stable public endpoints
 - optional repo-local AWS cost budget alerts for supplemental monthly cost visibility
 - host bootstrap for Docker, host memory guardrails, and a Caddy edge proxy with automatic TLS
+- EC2 observability through detailed monitoring and CloudWatch alarms
 
 It does not replace `craftalism-deployment`. Runtime composition, container image versions, and application environment wiring remain owned by that repository.
 
@@ -100,6 +101,11 @@ For small instances, keep the default host guardrails unless you have measured r
 - `vm_swappiness = 10`
 - `docker_log_max_size = "10m"`
 - `docker_log_max_file = 3`
+
+For host-level pressure visibility, keep:
+
+- `enable_detailed_monitoring = true`
+- `alarm_notification_email` set to a mailbox you actively read
 
 4. Decide whether this first apply should create the network:
 
@@ -207,6 +213,20 @@ If `budget_alert_email` is set, Terraform creates a repo-local monthly AWS cost 
 This is an alerting mechanism only. AWS Budgets does not hard-stop spending.
 
 If you already enforce account-level AWS budget controls outside this repo, leave `budget_alert_email = null` and treat the repo-local budget as unnecessary or supplemental only.
+
+## Instance Monitoring
+
+This repo enables EC2 detailed monitoring by default so host metrics publish at one-minute resolution.
+
+Terraform also creates a minimal CloudWatch alarm set for the EC2 host:
+
+- instance status check failure
+- sustained high CPU utilization
+- low CPU credit balance on burstable `t*` instance families
+
+If `alarm_notification_email` is set, Terraform also creates an SNS topic and email subscription for those alarms. AWS will send a confirmation email before notifications begin.
+
+These alarms help determine whether the host is unhealthy, CPU-bound, or exhausting burst credits. They do not provide memory, swap, or per-disk filesystem usage metrics. Those remain a future infra enhancement or a deployment/runtime concern depending on what needs to be measured.
 
 ## Bootstrap Behavior
 

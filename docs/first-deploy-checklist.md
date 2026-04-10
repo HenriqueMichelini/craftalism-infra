@@ -71,8 +71,10 @@ Use this checklist before the first real `terraform plan` and first EC2 deployme
 ## 5. Cost Guardrails
 
 - Set `budget_alert_email` to a mailbox you actively read.
+- Set `alarm_notification_email` to a mailbox you actively read.
 - Set `monthly_budget_limit_usd` to a low number such as `5`.
 - Remember AWS Budgets sends alerts only; it does not block charges.
+- Remember CloudWatch alarm email delivery starts only after the SNS subscription confirmation step is completed.
 - Treat this budget as total AWS cost alerting for the deployment boundary, not just EC2 compute.
 - If account-level AWS budget controls already exist outside this repo, prefer leaving `budget_alert_email = null` to avoid duplicate budget ownership.
 - Avoid surprise-cost services during first deploy:
@@ -131,6 +133,8 @@ Review the plan and confirm it includes:
 - zero public raw app-port rules
 - optional Elastic IP
 - optional AWS budget
+- EC2 detailed monitoring
+- CloudWatch alarms for host health and CPU pressure
 - optional Route53 records only if requested
 
 ## 9. First Apply
@@ -148,6 +152,7 @@ After apply, record:
 - dashboard URL
 - API URL
 - auth issuer URL
+- CloudWatch alarm names
 
 ## 10. Post-Apply Verification
 

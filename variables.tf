@@ -50,6 +50,12 @@ variable "instance_type" {
   type        = string
 }
 
+variable "enable_detailed_monitoring" {
+  description = "Whether to enable EC2 detailed monitoring so CloudWatch publishes one-minute host metrics."
+  type        = bool
+  default     = true
+}
+
 variable "swap_size_mb" {
   description = "Swap file size in MiB created on the EC2 host to reduce OOM risk on small instances. Set to 0 to disable swap creation."
   type        = number
@@ -220,10 +226,38 @@ variable "budget_alert_email" {
   default     = null
 }
 
+variable "alarm_notification_email" {
+  description = "Email address that should receive CloudWatch alarm notifications for the EC2 host. Leave null to create alarms without notifications."
+  type        = string
+  default     = null
+}
+
 variable "monthly_budget_limit_usd" {
   description = "Monthly AWS cost budget limit, in USD, used when budget_alert_email is set."
   type        = number
   default     = 5
+}
+
+variable "cpu_utilization_alarm_threshold_percent" {
+  description = "Average CPU utilization percentage that triggers the sustained host-pressure alarm."
+  type        = number
+  default     = 80
+
+  validation {
+    condition     = var.cpu_utilization_alarm_threshold_percent > 0 && var.cpu_utilization_alarm_threshold_percent <= 100
+    error_message = "cpu_utilization_alarm_threshold_percent must be between 1 and 100."
+  }
+}
+
+variable "cpu_credit_balance_alarm_threshold" {
+  description = "Remaining CPU credits that trigger a low-credit alarm on burstable T-family instances."
+  type        = number
+  default     = 20
+
+  validation {
+    condition     = var.cpu_credit_balance_alarm_threshold >= 0
+    error_message = "cpu_credit_balance_alarm_threshold must be zero or greater."
+  }
 }
 
 variable "tags" {

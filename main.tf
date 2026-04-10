@@ -1,8 +1,10 @@
 locals {
-  name_prefix        = "${var.project_name}-${var.environment}"
-  selected_ami_id    = var.ami_id != null ? var.ami_id : data.aws_ami.ubuntu[0].id
-  selected_vpc_id    = var.create_vpc ? aws_vpc.craftalism[0].id : var.vpc_id
-  selected_subnet_id = var.create_vpc ? aws_subnet.public[0].id : var.subnet_id
+  name_prefix                  = "${var.project_name}-${var.environment}"
+  selected_ami_id              = var.ami_id != null ? var.ami_id : data.aws_ami.ubuntu[0].id
+  selected_vpc_id              = var.create_vpc ? aws_vpc.craftalism[0].id : var.vpc_id
+  selected_subnet_id           = var.create_vpc ? aws_subnet.public[0].id : var.subnet_id
+  instance_family              = split(".", var.instance_type)[0]
+  is_burstable_instance_family = startswith(local.instance_family, "t")
   common_tags = merge(
     {
       Project     = var.project_name
@@ -204,6 +206,7 @@ resource "aws_instance" "craftalism" {
   vpc_security_group_ids      = [aws_security_group.craftalism.id]
   associate_public_ip_address = !var.associate_eip
   key_name                    = var.key_name
+  monitoring                  = var.enable_detailed_monitoring
   user_data_replace_on_change = true
 
   user_data = templatefile("${path.module}/templates/cloud-init.yaml.tftpl", {
@@ -272,6 +275,87 @@ resource "aws_budgets_budget" "monthly" {
     notification_type          = "ACTUAL"
     subscriber_email_addresses = [var.budget_alert_email]
   }
+}
+
+resource "aws_sns_topic" "instance_alarms" {
+  count = var.alarm_notification_email == null ? 0 : 1
+
+  name = "${local.name_prefix}-instance-alarms"
+
+  tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-alarms" })
+}
+
+resource "aws_sns_topic_subscription" "instance_alarms_email" {
+  count = var.alarm_notification_email == null ? 0 : 1
+
+  topic_arn = aws_sns_topic.instance_alarms[0].arn
+  protocol  = "email"
+  endpoint  = var.alarm_notification_email
+}
+
+resource "aws_cloudwatch_metric_alarm" "instance_status_check_failed" {
+  alarm_name          = "${local.name_prefix}-instance-status-check-failed"
+  alarm_description   = "EC2 instance status checks failed for the Craftalism host."
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 2
+  metric_name         = "StatusCheckFailed"
+  namespace           = "AWS/EC2"
+  period              = 60
+  statistic           = "Maximum"
+  threshold           = 1
+  treat_missing_data  = "breaching"
+  alarm_actions       = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+  ok_actions          = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+
+  dimensions = {
+    InstanceId = aws_instance.craftalism.id
+  }
+
+  tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-status-check-failed" })
+}
+
+resource "aws_cloudwatch_metric_alarm" "instance_cpu_high" {
+  alarm_name          = "${local.name_prefix}-instance-cpu-high"
+  alarm_description   = "Sustained EC2 CPU utilization is high enough that the single-node Craftalism host may need runtime tuning or a larger instance."
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 5
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = 60
+  statistic           = "Average"
+  threshold           = var.cpu_utilization_alarm_threshold_percent
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+  ok_actions          = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+
+  dimensions = {
+    InstanceId = aws_instance.craftalism.id
+  }
+
+  tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-cpu-high" })
+}
+
+resource "aws_cloudwatch_metric_alarm" "instance_cpu_credit_low" {
+  count = local.is_burstable_instance_family ? 1 : 0
+
+  alarm_name          = "${local.name_prefix}-instance-cpu-credit-low"
+  alarm_description   = "EC2 burst credits are low for the Craftalism host. Repeated alarms suggest the stack has outgrown its burstable baseline."
+  comparison_operator = "LessThanOrEqualToThreshold"
+  evaluation_periods  = 5
+  metric_name         = "CPUCreditBalance"
+  namespace           = "AWS/EC2"
+  period              = 300
+  statistic           = "Minimum"
+  threshold           = var.cpu_credit_balance_alarm_threshold
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+  ok_actions          = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+
+  dimensions = {
+    InstanceId = aws_instance.craftalism.id
+  }
+
+  tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-cpu-credit-low" })
 }
 
 resource "aws_route53_record" "edge" {

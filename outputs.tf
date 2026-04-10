@@ -42,3 +42,17 @@ output "budget_name" {
   description = "AWS budget name, if budget alerts were enabled."
   value       = try(aws_budgets_budget.monthly[0].name, null)
 }
+
+output "instance_alarm_topic_arn" {
+  description = "SNS topic ARN used for EC2 alarm notifications, if email notifications were enabled."
+  value       = try(aws_sns_topic.instance_alarms[0].arn, null)
+}
+
+output "instance_alarm_names" {
+  description = "CloudWatch alarm names created for the Craftalism host."
+  value = compact([
+    aws_cloudwatch_metric_alarm.instance_status_check_failed.alarm_name,
+    aws_cloudwatch_metric_alarm.instance_cpu_high.alarm_name,
+    try(aws_cloudwatch_metric_alarm.instance_cpu_credit_low[0].alarm_name, null),
+  ])
+}
