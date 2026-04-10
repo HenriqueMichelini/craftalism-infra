@@ -181,6 +181,10 @@ resource "aws_instance" "craftalism" {
     auth_upstream_port                 = var.auth_upstream_port
     edge_proxy_image                   = var.edge_proxy_image
     operator_username                  = var.operator_username
+    swap_size_mb                       = var.swap_size_mb
+    vm_swappiness                      = var.vm_swappiness
+    docker_log_max_size                = var.docker_log_max_size
+    docker_log_max_file                = var.docker_log_max_file
   })
 
   root_block_device {

@@ -7,7 +7,64 @@ packages:
   - ca-certificates
   - curl
 
+bootcmd:
+  - mkdir -p /etc/systemd/journald.conf.d
+
 write_files:
+  - path: /etc/docker/daemon.json
+    permissions: "0644"
+    owner: root:root
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "${docker_log_max_size}",
+          "max-file": "${docker_log_max_file}"
+        }
+      }
+
+  - path: /etc/sysctl.d/99-craftalism-memory.conf
+    permissions: "0644"
+    owner: root:root
+    content: |
+      vm.swappiness=${vm_swappiness}
+
+  - path: /etc/systemd/journald.conf.d/craftalism.conf
+    permissions: "0644"
+    owner: root:root
+    content: |
+      [Journal]
+      SystemMaxUse=100M
+      RuntimeMaxUse=50M
+
+  - path: /usr/local/bin/craftalism-host-optimize.sh
+    permissions: "0755"
+    owner: root:root
+    content: |
+      #!/bin/sh
+      set -eu
+
+      if [ "${swap_size_mb}" -gt 0 ]; then
+        if [ ! -f /swapfile ]; then
+          if command -v fallocate >/dev/null 2>&1; then
+            fallocate -l "${swap_size_mb}M" /swapfile || dd if=/dev/zero of=/swapfile bs=1M count="${swap_size_mb}"
+          else
+            dd if=/dev/zero of=/swapfile bs=1M count="${swap_size_mb}"
+          fi
+          chmod 600 /swapfile
+          mkswap /swapfile
+        fi
+
+        if ! grep -q '^/swapfile ' /etc/fstab; then
+          echo '/swapfile none swap sw 0 0' >> /etc/fstab
+        fi
+
+        swapon /swapfile || true
+      fi
+
+      sysctl --system
+      systemctl restart systemd-journald || true
+
   - path: /opt/craftalism/edge/Caddyfile
     permissions: "0644"
     owner: root:root
@@ -64,8 +121,14 @@ write_files:
       - API: ${api_upstream_port}
       - Auth: ${auth_upstream_port}
 
+      Host memory guardrails:
+      - Swap file: ${swap_size_mb} MiB
+      - vm.swappiness: ${vm_swappiness}
+      - Docker log rotation: ${docker_log_max_size} x ${docker_log_max_file}
+
 runcmd:
   - mkdir -p /opt/craftalism/edge/data /opt/craftalism/edge/config
+  - /usr/local/bin/craftalism-host-optimize.sh
   - systemctl enable docker
   - systemctl start docker
   - usermod -aG docker ${operator_username}

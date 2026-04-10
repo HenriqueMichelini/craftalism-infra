@@ -50,6 +50,28 @@ variable "instance_type" {
   type        = string
 }
 
+variable "swap_size_mb" {
+  description = "Swap file size in MiB created on the EC2 host to reduce OOM risk on small instances. Set to 0 to disable swap creation."
+  type        = number
+  default     = 1024
+
+  validation {
+    condition     = var.swap_size_mb >= 0
+    error_message = "swap_size_mb must be zero or a positive integer."
+  }
+}
+
+variable "vm_swappiness" {
+  description = "Linux vm.swappiness applied on the EC2 host. Lower values prefer RAM and use swap only as pressure rises."
+  type        = number
+  default     = 10
+
+  validation {
+    condition     = var.vm_swappiness >= 0 && var.vm_swappiness <= 100
+    error_message = "vm_swappiness must be between 0 and 100."
+  }
+}
+
 variable "ami_id" {
   description = "Optional explicit AMI ID. If null, the latest Ubuntu 24.04 LTS AMI is used."
   type        = string
@@ -150,6 +172,23 @@ variable "edge_proxy_image" {
   description = "Container image used for the Caddy edge proxy. Pin a digest in production if desired."
   type        = string
   default     = "caddy:2.10.0-alpine"
+}
+
+variable "docker_log_max_size" {
+  description = "Maximum size per Docker json-file log before rotation."
+  type        = string
+  default     = "10m"
+}
+
+variable "docker_log_max_file" {
+  description = "Number of rotated Docker json-file logs to retain per container."
+  type        = number
+  default     = 3
+
+  validation {
+    condition     = var.docker_log_max_file >= 1
+    error_message = "docker_log_max_file must be at least 1."
+  }
 }
 
 variable "root_volume_size_gb" {

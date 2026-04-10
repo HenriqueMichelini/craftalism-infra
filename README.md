@@ -10,7 +10,7 @@ This repository provisions the minimum AWS resources required by the 2026-04-08 
 - optional SSH restricted to explicit operator CIDRs
 - optional Elastic IP and Route53 records for stable public endpoints
 - optional AWS budget alerts for monthly cost guardrails
-- host bootstrap for Docker and a Caddy edge proxy with automatic TLS
+- host bootstrap for Docker, host memory guardrails, and a Caddy edge proxy with automatic TLS
 
 It does not replace `craftalism-deployment`. Runtime composition, container image versions, and application environment wiring remain owned by that repository.
 
@@ -40,6 +40,7 @@ This implementation follows Craftalism governance:
 - stay near-zero-cost and avoid managed-service sprawl
 - do not expose Postgres, API, auth, dashboard raw ports, or RCON publicly
 - terminate TLS at the instance edge
+- keep small-instance memory pressure survivable with host-level safeguards
 
 ## Repository Layout
 
@@ -80,6 +81,13 @@ docker run --rm caddy:2.10.0-alpine caddy hash-password --plaintext 'replace-me'
 ```
 
 3. Fill in `terraform.tfvars` with your region, hostnames, budget email, and restricted SSH CIDRs.
+
+For small instances, keep the default host guardrails unless you have measured reason to change them:
+
+- `swap_size_mb = 1024`
+- `vm_swappiness = 10`
+- `docker_log_max_size = "10m"`
+- `docker_log_max_file = 3`
 
 4. Decide whether this first apply should create the network:
 
@@ -158,6 +166,23 @@ With `create_vpc = true`, Terraform creates:
 
 This avoids NAT Gateway and private subnet cost/complexity during the first account bootstrap.
 
+## Small-Instance Guidance
+
+The example configuration now targets `t3.small` instead of `t3.micro`.
+
+- `t3.micro` is too small for the full single-node stack.
+- `t3.small` can work only with conservative runtime limits and host swap enabled.
+- `t3.medium` is the safer floor if Minecraft, API, auth, dashboard, and Postgres all run together under real player traffic.
+
+This repo now bootstraps:
+
+- a configurable swap file
+- a lower `vm.swappiness` value
+- Docker log rotation defaults
+- capped systemd-journald disk usage
+
+These changes reduce OOM risk on small EC2 instances, but they do not replace runtime-side container memory limits in `craftalism-deployment`.
+
 ## Cost Guardrails
 
 If `budget_alert_email` is set, Terraform creates a monthly AWS budget with alerts at:
@@ -169,7 +194,7 @@ This is an alerting mechanism only. AWS Budgets does not hard-stop spending.
 
 ## Bootstrap Behavior
 
-Cloud-init installs Docker, writes a Caddy config, and starts an edge proxy container on the EC2 host. The edge proxy:
+Cloud-init installs Docker, applies small-host memory settings, writes a Caddy config, and starts an edge proxy container on the EC2 host. The edge proxy:
 
 - redirects HTTP to HTTPS
 - terminates TLS automatically
@@ -180,6 +205,13 @@ The edge container runs in host network mode so its `localhost` upstreams reach
 the loopback-only ports published by `craftalism-deployment` on the EC2 host.
 
 Application containers are still expected to be started separately from `craftalism-deployment`.
+
+Host-level memory tuning created by this repo:
+
+- `/swapfile` sized from `swap_size_mb`
+- `/etc/sysctl.d/99-craftalism-memory.conf`
+- `/etc/docker/daemon.json` log rotation defaults
+- `/etc/systemd/journald.conf.d/craftalism.conf`
 
 ## Validation
 

@@ -68,14 +68,19 @@ After the first apply or any instance replacement, verify on the host:
 
 ```bash
 systemctl status docker
+swapon --show
+sysctl vm.swappiness
 docker ps
 docker logs craftalism-edge
 sudo cat /opt/craftalism/edge/Caddyfile
+sudo cat /etc/docker/daemon.json
 ```
 
 Expected result:
 
 - Docker is active
+- swap is enabled when `swap_size_mb > 0`
+- `vm.swappiness` matches the configured Terraform input
 - `craftalism-edge` is running
 - Caddy is listening on `80` and `443`
 

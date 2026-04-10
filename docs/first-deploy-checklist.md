@@ -78,6 +78,14 @@ Use this checklist before the first real `terraform plan` and first EC2 deployme
   - managed databases
   - EKS
 
+## 5a. Small-Host Memory Guardrails
+
+- Do not use `t3.micro` for the full Craftalism stack.
+- Prefer `t3.small` only for low-concurrency hobby use with swap enabled.
+- Prefer `t3.medium` if Minecraft, API, auth, dashboard, and Postgres will share the same host under regular use.
+- Keep `swap_size_mb` enabled on small instances unless you have measured evidence it is hurting more than helping.
+- Keep Docker log rotation enabled so noisy containers do not accumulate oversized local logs.
+
 ## 6. Runtime Handoff to craftalism-deployment
 
 - Confirm the runtime stack will expose these host-local ports on the EC2 instance:
