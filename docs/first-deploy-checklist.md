@@ -5,10 +5,13 @@ Use this checklist before the first real `terraform plan` and first EC2 deployme
 ## 1. AWS Inputs
 
 - Confirm the target AWS account and region are correct.
+- Select an explicit `ami_id` for deterministic production deployments.
+- Only use `allow_automatic_ami_selection = true` for disposable environments where automatic refresh is acceptable.
 - Decide whether Terraform will create the network:
   - `create_vpc = true` for a new AWS account
   - `create_vpc = false` only if you already have a VPC and subnet
 - If `create_vpc = false`, confirm the selected VPC and subnet already exist.
+- If `create_vpc = false` and `associate_eip = false`, confirm the selected subnet auto-assigns public IPv4 addresses.
 - Confirm the subnet has outbound internet access for:
   - Ubuntu package installation
   - Docker image pulls
@@ -70,6 +73,7 @@ Use this checklist before the first real `terraform plan` and first EC2 deployme
 - Set `budget_alert_email` to a mailbox you actively read.
 - Set `monthly_budget_limit_usd` to a low number such as `5`.
 - Remember AWS Budgets sends alerts only; it does not block charges.
+- Treat this budget as total AWS cost alerting for the deployment boundary, not just EC2 compute.
 - Avoid surprise-cost services during first deploy:
   - NAT Gateway
   - load balancers

@@ -26,7 +26,7 @@ data "aws_availability_zones" "available" {
 }
 
 data "aws_ami" "ubuntu" {
-  count       = var.ami_id == null ? 1 : 0
+  count       = var.ami_id == null && var.allow_automatic_ami_selection ? 1 : 0
   most_recent = true
   owners      = ["099720109477"]
 
@@ -41,6 +41,11 @@ data "aws_ami" "ubuntu" {
   }
 }
 
+data "aws_subnet" "existing" {
+  count = var.create_vpc ? 0 : 1
+  id    = var.subnet_id
+}
+
 check "existing_network_inputs" {
   assert {
     condition = (
@@ -48,6 +53,37 @@ check "existing_network_inputs" {
       (var.vpc_id != null && var.subnet_id != null)
     )
     error_message = "vpc_id and subnet_id must both be set when create_vpc is false."
+  }
+}
+
+check "ami_selection_input" {
+  assert {
+    condition = (
+      var.ami_id != null ||
+      var.allow_automatic_ami_selection
+    )
+    error_message = "Set ami_id for deterministic builds, or explicitly enable allow_automatic_ami_selection for non-production use."
+  }
+}
+
+check "existing_subnet_vpc_match" {
+  assert {
+    condition = (
+      var.create_vpc ||
+      data.aws_subnet.existing[0].vpc_id == var.vpc_id
+    )
+    error_message = "subnet_id must belong to the provided vpc_id when create_vpc is false."
+  }
+}
+
+check "existing_subnet_public_ip_behavior" {
+  assert {
+    condition = (
+      var.create_vpc ||
+      var.associate_eip ||
+      data.aws_subnet.existing[0].map_public_ip_on_launch
+    )
+    error_message = "When create_vpc is false and associate_eip is false, the selected subnet must auto-assign public IPs."
   }
 }
 
@@ -194,6 +230,13 @@ resource "aws_instance" "craftalism" {
     delete_on_termination = false
   }
 
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+    instance_metadata_tags      = "disabled"
+  }
+
   tags = merge(local.common_tags, { Name = "${local.name_prefix}-ec2" })
 }
 
@@ -213,11 +256,6 @@ resource "aws_budgets_budget" "monthly" {
   limit_amount = tostring(var.monthly_budget_limit_usd)
   limit_unit   = "USD"
   time_unit    = "MONTHLY"
-
-  cost_filter {
-    name   = "Service"
-    values = ["Amazon Elastic Compute Cloud - Compute"]
-  }
 
   notification {
     comparison_operator        = "GREATER_THAN"

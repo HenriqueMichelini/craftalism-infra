@@ -73,9 +73,15 @@ variable "vm_swappiness" {
 }
 
 variable "ami_id" {
-  description = "Optional explicit AMI ID. If null, the latest Ubuntu 24.04 LTS AMI is used."
+  description = "Explicit AMI ID for the EC2 host. Leave null only when allow_automatic_ami_selection is intentionally enabled."
   type        = string
   default     = null
+}
+
+variable "allow_automatic_ami_selection" {
+  description = "Whether Terraform may auto-select the most recent Ubuntu 24.04 LTS AMI when ami_id is unset. Keep false for deterministic production environments."
+  type        = bool
+  default     = false
 }
 
 variable "key_name" {
@@ -127,7 +133,7 @@ variable "dashboard_basic_auth_password_hash" {
   type        = string
 
   validation {
-    condition     = can(regex("^\\$2[aby]\\$", var.dashboard_basic_auth_password_hash))
+    condition     = can(regex("^\\$2[aby]\\$[0-9]{2}\\$[./A-Za-z0-9]{53}$", var.dashboard_basic_auth_password_hash))
     error_message = "dashboard_basic_auth_password_hash must be a bcrypt hash."
   }
 }
@@ -209,13 +215,13 @@ variable "operator_username" {
 }
 
 variable "budget_alert_email" {
-  description = "Email address that should receive monthly AWS budget alerts. Leave null to skip budget creation."
+  description = "Email address that should receive monthly AWS cost budget alerts. Leave null to skip budget creation."
   type        = string
   default     = null
 }
 
 variable "monthly_budget_limit_usd" {
-  description = "Monthly AWS budget limit, in USD, used when budget_alert_email is set."
+  description = "Monthly AWS cost budget limit, in USD, used when budget_alert_email is set."
   type        = number
   default     = 5
 }

@@ -36,6 +36,7 @@ terraform apply tfplan
 
 ```bash
 terraform fmt -check -recursive
+terraform init -backend=false
 terraform validate
 terraform plan -out=tfplan
 ```

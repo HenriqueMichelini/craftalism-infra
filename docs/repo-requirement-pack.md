@@ -58,6 +58,7 @@ This phase is limited to creating a new infrastructure repository that implement
 - Keep security groups simple and explicit
 - Make SSH access opt-in and CIDR-limited
 - Use persistent instance storage
+- Keep production AMI selection deterministic
 - Make reverse-proxy upstream ports configurable but default to the current deployment repo values
 - Keep secrets and password hashes out of version control
 

@@ -6,10 +6,10 @@ This repository provisions the minimum AWS resources required by the 2026-04-08 
 
 - one low-cost VPC with a single public subnet by default
 - one EC2 instance for the full hobby-scale stack
-- one security group that exposes only Minecraft and HTTPS entry points
+- one security group that exposes Minecraft plus HTTP/HTTPS edge entry points
 - optional SSH restricted to explicit operator CIDRs
 - optional Elastic IP and Route53 records for stable public endpoints
-- optional AWS budget alerts for monthly cost guardrails
+- optional AWS cost budget alerts for monthly cost guardrails
 - host bootstrap for Docker, host memory guardrails, and a Caddy edge proxy with automatic TLS
 
 It does not replace `craftalism-deployment`. Runtime composition, container image versions, and application environment wiring remain owned by that repository.
@@ -82,6 +82,18 @@ docker run --rm caddy:2.10.0-alpine caddy hash-password --plaintext 'replace-me'
 
 3. Fill in `terraform.tfvars` with your region, hostnames, budget email, and restricted SSH CIDRs.
 
+Set an explicit AMI ID for deterministic production deployments:
+
+```hcl
+ami_id = "ami-xxxxxxxxxxxxxxxxx"
+```
+
+Only enable automatic AMI lookup for disposable environments where reproducibility is not a requirement:
+
+```hcl
+allow_automatic_ami_selection = true
+```
+
 For small instances, keep the default host guardrails unless you have measured reason to change them:
 
 - `swap_size_mb = 1024`
@@ -96,6 +108,8 @@ create_vpc = true
 ```
 
 This is the default and is the right choice for a brand-new AWS account. Only set `create_vpc = false` when you already have a VPC and subnet to target.
+
+If you reuse an existing subnet and keep `associate_eip = false`, that subnet must auto-assign public IPv4 addresses or the instance will not be reachable from the internet.
 
 5. For repeatable environments, prepare remote state:
 
@@ -185,7 +199,7 @@ These changes reduce OOM risk on small EC2 instances, but they do not replace ru
 
 ## Cost Guardrails
 
-If `budget_alert_email` is set, Terraform creates a monthly AWS budget with alerts at:
+If `budget_alert_email` is set, Terraform creates a monthly AWS cost budget with alerts at:
 
 - 80% of the configured limit
 - 100% of the configured limit
@@ -220,6 +234,8 @@ This repo includes a GitHub Actions workflow that runs:
 - `terraform fmt -check`
 - `terraform init -backend=false`
 - `terraform validate`
+
+CI runs these checks on pull requests and pushes to `main`.
 
 Local verification:
 
