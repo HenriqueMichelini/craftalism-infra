@@ -283,8 +283,8 @@ terraform validate
 
 Before the first real AWS apply, use:
 
-- [docs/first-deploy-checklist.md](/home/henriquemichelini/IdeaProjects/craftalism-infra/docs/first-deploy-checklist.md)
-- [docs/operations-runbook.md](/home/henriquemichelini/IdeaProjects/craftalism-infra/docs/operations-runbook.md)
+- [`docs/first-deploy-checklist.md`](./docs/first-deploy-checklist.md)
+- [`docs/operations-runbook.md`](./docs/operations-runbook.md)
 
 These documents cover:
 
