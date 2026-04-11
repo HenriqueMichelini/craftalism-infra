@@ -243,6 +243,10 @@ resource "aws_instance" "craftalism" {
     instance_metadata_tags      = "disabled"
   }
 
+  lifecycle {
+    ignore_changes = [associate_public_ip_address]
+  }
+
   tags = merge(local.common_tags, { Name = "${local.name_prefix}-ec2" })
 }
 
@@ -460,6 +464,8 @@ resource "aws_cloudwatch_metric_alarm" "instance_root_filesystem_high" {
 
   dimensions = {
     InstanceId = aws_instance.craftalism.id
+    path       = var.root_filesystem_metric_path
+    fstype     = var.root_filesystem_metric_fstype
   }
 
   tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-root-filesystem-high" })

@@ -231,7 +231,7 @@ When `enable_host_metrics = true`, Terraform also:
 - attaches the `CloudWatchAgentServerPolicy` through an EC2 instance profile
 - installs the Amazon CloudWatch Agent during bootstrap
 - publishes `mem_used_percent`, `swap_used_percent`, and root `disk_used_percent`
-- creates memory, swap, and root-filesystem utilization alarms
+- creates memory, swap, and root-filesystem utilization alarms keyed to the root filesystem metric dimensions
 
 If `alarm_notification_email` is set, Terraform also creates an SNS topic and email subscription for those alarms. AWS will send a confirmation email before notifications begin.
 

@@ -305,6 +305,18 @@ variable "root_filesystem_utilization_alarm_threshold_percent" {
   }
 }
 
+variable "root_filesystem_metric_path" {
+  description = "Filesystem path used by the CloudWatch Agent root-disk utilization alarm."
+  type        = string
+  default     = "/"
+}
+
+variable "root_filesystem_metric_fstype" {
+  description = "Filesystem type used by the CloudWatch Agent root-disk utilization alarm."
+  type        = string
+  default     = "ext4"
+}
+
 variable "tags" {
   description = "Additional AWS tags applied to all managed resources."
   type        = map(string)
