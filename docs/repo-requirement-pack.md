@@ -54,7 +54,10 @@ This phase is limited to creating a new infrastructure repository that implement
 - Enterprise secret-management platforms as a prerequisite
 
 ## Local Requirements
-- Reuse an existing VPC/subnet instead of provisioning a broad network platform
+- Support either:
+  - bootstrapping a minimal repo-owned VPC/subnet for a brand-new AWS account, or
+  - reusing an existing VPC/subnet when the operator already has one
+- Keep any repo-created network footprint minimal and limited to the single-host deployment boundary
 - Keep security groups simple and explicit
 - Make SSH access opt-in and CIDR-limited
 - Use persistent instance storage
@@ -81,6 +84,11 @@ This phase is limited to creating a new infrastructure repository that implement
 - Does the host bootstrap provide a sane TLS edge and dashboard protection?
 - Are raw application ports and RCON kept off the public internet?
 - Are CI and docs sufficient for a new Terraform-owned repo?
+
+## Network Model Clarification
+- `create_vpc = true` is the bootstrap path for a new AWS account and is expected to create only the minimal VPC, public subnet, internet gateway, and route table needed for the single-host deployment.
+- `create_vpc = false` is the reuse path for operators who already have a suitable VPC and subnet.
+- Documentation and examples must keep both paths explicit so audits do not treat the bootstrap path as unintended network sprawl.
 
 ## Success Criteria
 - A new `craftalism-infra` repository exists with runnable Terraform
