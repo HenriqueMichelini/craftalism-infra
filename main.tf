@@ -23,6 +23,11 @@ locals {
   ])
 }
 
+moved {
+  from = aws_cloudwatch_metric_alarm.instance_swap_high
+  to   = aws_cloudwatch_metric_alarm.instance_swap_warning
+}
+
 data "aws_availability_zones" "available" {
   state = "available"
 }
@@ -400,6 +405,29 @@ resource "aws_cloudwatch_metric_alarm" "instance_cpu_credit_low" {
   tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-cpu-credit-low" })
 }
 
+resource "aws_cloudwatch_metric_alarm" "instance_cpu_credit_critical" {
+  count = local.is_burstable_instance_family ? 1 : 0
+
+  alarm_name          = "${local.name_prefix}-instance-cpu-credit-critical"
+  alarm_description   = "EC2 burst credits are critically low for the Craftalism host. Immediate sustained CPU pressure may throttle the instance."
+  comparison_operator = "LessThanOrEqualToThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUCreditBalance"
+  namespace           = "AWS/EC2"
+  period              = 300
+  statistic           = "Minimum"
+  threshold           = var.cpu_credit_balance_critical_alarm_threshold
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+  ok_actions          = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+
+  dimensions = {
+    InstanceId = aws_instance.craftalism.id
+  }
+
+  tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-cpu-credit-critical" })
+}
+
 resource "aws_cloudwatch_metric_alarm" "instance_memory_high" {
   count = var.enable_host_metrics ? 1 : 0
 
@@ -423,13 +451,36 @@ resource "aws_cloudwatch_metric_alarm" "instance_memory_high" {
   tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-memory-high" })
 }
 
-resource "aws_cloudwatch_metric_alarm" "instance_swap_high" {
+resource "aws_cloudwatch_metric_alarm" "instance_memory_available_low" {
+  count = var.enable_host_metrics ? 1 : 0
+
+  alarm_name          = "${local.name_prefix}-instance-memory-available-low"
+  alarm_description   = "Available in-guest memory is low on the Craftalism host. Repeated alarms suggest active memory pressure or OOM risk."
+  comparison_operator = "LessThanOrEqualToThreshold"
+  evaluation_periods  = 5
+  metric_name         = "mem_available"
+  namespace           = var.host_metrics_namespace
+  period              = 60
+  statistic           = "Average"
+  threshold           = var.memory_available_low_alarm_threshold_bytes
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+  ok_actions          = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+
+  dimensions = {
+    InstanceId = aws_instance.craftalism.id
+  }
+
+  tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-memory-available-low" })
+}
+
+resource "aws_cloudwatch_metric_alarm" "instance_swap_warning" {
   count = var.enable_host_metrics && var.swap_size_mb > 0 ? 1 : 0
 
-  alarm_name          = "${local.name_prefix}-instance-swap-high"
+  alarm_name          = "${local.name_prefix}-instance-swap-warning"
   alarm_description   = "Swap utilization is elevated on the Craftalism host. Repeated alarms suggest sustained memory pressure on the instance."
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 5
+  evaluation_periods  = 15
   metric_name         = "swap_used_percent"
   namespace           = var.host_metrics_namespace
   period              = 60
@@ -443,7 +494,31 @@ resource "aws_cloudwatch_metric_alarm" "instance_swap_high" {
     InstanceId = aws_instance.craftalism.id
   }
 
-  tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-swap-high" })
+  tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-swap-warning" })
+}
+
+resource "aws_cloudwatch_metric_alarm" "instance_swap_critical" {
+  count = var.enable_host_metrics && var.swap_size_mb > 0 ? 1 : 0
+
+  alarm_name          = "${local.name_prefix}-instance-swap-critical"
+  alarm_description   = "Swap utilization is critically high on the Craftalism host. This indicates active memory exhaustion risk."
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  datapoints_to_alarm = 5
+  evaluation_periods  = 10
+  metric_name         = "swap_used_percent"
+  namespace           = var.host_metrics_namespace
+  period              = 60
+  statistic           = "Average"
+  threshold           = var.swap_utilization_critical_alarm_threshold_percent
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+  ok_actions          = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+
+  dimensions = {
+    InstanceId = aws_instance.craftalism.id
+  }
+
+  tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-swap-critical" })
 }
 
 resource "aws_cloudwatch_metric_alarm" "instance_root_filesystem_high" {
@@ -469,6 +544,31 @@ resource "aws_cloudwatch_metric_alarm" "instance_root_filesystem_high" {
   }
 
   tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-root-filesystem-high" })
+}
+
+resource "aws_cloudwatch_metric_alarm" "instance_root_inodes_high" {
+  count = var.enable_host_metrics ? 1 : 0
+
+  alarm_name          = "${local.name_prefix}-instance-root-inodes-high"
+  alarm_description   = "Root filesystem inode utilization is high on the Craftalism host. Repeated alarms suggest many small files or log churn."
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 5
+  metric_name         = "disk_inodes_used_percent"
+  namespace           = var.host_metrics_namespace
+  period              = 60
+  statistic           = "Average"
+  threshold           = var.root_filesystem_inode_utilization_alarm_threshold_percent
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+  ok_actions          = var.alarm_notification_email == null ? [] : [aws_sns_topic.instance_alarms[0].arn]
+
+  dimensions = {
+    InstanceId = aws_instance.craftalism.id
+    path       = var.root_filesystem_metric_path
+    fstype     = var.root_filesystem_metric_fstype
+  }
+
+  tags = merge(local.common_tags, { Name = "${local.name_prefix}-instance-root-inodes-high" })
 }
 
 resource "aws_route53_record" "edge" {

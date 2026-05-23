@@ -272,6 +272,17 @@ variable "cpu_credit_balance_alarm_threshold" {
   }
 }
 
+variable "cpu_credit_balance_critical_alarm_threshold" {
+  description = "Remaining CPU credits that trigger a critical low-credit alarm on burstable T-family instances."
+  type        = number
+  default     = 5
+
+  validation {
+    condition     = var.cpu_credit_balance_critical_alarm_threshold >= 0
+    error_message = "cpu_credit_balance_critical_alarm_threshold must be zero or greater."
+  }
+}
+
 variable "memory_utilization_alarm_threshold_percent" {
   description = "Average in-guest memory utilization percentage that triggers the CloudWatch Agent memory-pressure alarm."
   type        = number
@@ -280,6 +291,17 @@ variable "memory_utilization_alarm_threshold_percent" {
   validation {
     condition     = var.memory_utilization_alarm_threshold_percent > 0 && var.memory_utilization_alarm_threshold_percent <= 100
     error_message = "memory_utilization_alarm_threshold_percent must be between 1 and 100."
+  }
+}
+
+variable "memory_available_low_alarm_threshold_bytes" {
+  description = "Average available in-guest memory in bytes that triggers the CloudWatch Agent low-available-memory alarm. Default is 300 MiB."
+  type        = number
+  default     = 314572800
+
+  validation {
+    condition     = var.memory_available_low_alarm_threshold_bytes > 0
+    error_message = "memory_available_low_alarm_threshold_bytes must be greater than zero."
   }
 }
 
@@ -294,6 +316,17 @@ variable "swap_utilization_alarm_threshold_percent" {
   }
 }
 
+variable "swap_utilization_critical_alarm_threshold_percent" {
+  description = "Average swap utilization percentage that triggers the critical CloudWatch Agent swap-pressure alarm when swap is enabled."
+  type        = number
+  default     = 80
+
+  validation {
+    condition     = var.swap_utilization_critical_alarm_threshold_percent >= 0 && var.swap_utilization_critical_alarm_threshold_percent <= 100
+    error_message = "swap_utilization_critical_alarm_threshold_percent must be between 0 and 100."
+  }
+}
+
 variable "root_filesystem_utilization_alarm_threshold_percent" {
   description = "Average root filesystem utilization percentage that triggers the CloudWatch Agent disk-pressure alarm."
   type        = number
@@ -302,6 +335,17 @@ variable "root_filesystem_utilization_alarm_threshold_percent" {
   validation {
     condition     = var.root_filesystem_utilization_alarm_threshold_percent > 0 && var.root_filesystem_utilization_alarm_threshold_percent <= 100
     error_message = "root_filesystem_utilization_alarm_threshold_percent must be between 1 and 100."
+  }
+}
+
+variable "root_filesystem_inode_utilization_alarm_threshold_percent" {
+  description = "Average root filesystem inode utilization percentage that triggers the CloudWatch Agent inode-pressure alarm."
+  type        = number
+  default     = 85
+
+  validation {
+    condition     = var.root_filesystem_inode_utilization_alarm_threshold_percent > 0 && var.root_filesystem_inode_utilization_alarm_threshold_percent <= 100
+    error_message = "root_filesystem_inode_utilization_alarm_threshold_percent must be between 1 and 100."
   }
 }
 

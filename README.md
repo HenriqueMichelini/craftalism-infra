@@ -225,13 +225,14 @@ Terraform also creates a minimal CloudWatch alarm set for the EC2 host:
 - instance status check failure
 - sustained high CPU utilization
 - low CPU credit balance on burstable `t*` instance families
+- critical CPU credit balance on burstable `t*` instance families
 
 When `enable_host_metrics = true`, Terraform also:
 
 - attaches the `CloudWatchAgentServerPolicy` through an EC2 instance profile
 - installs the Amazon CloudWatch Agent during bootstrap
-- publishes `mem_used_percent`, `swap_used_percent`, and root `disk_used_percent`
-- creates memory, swap, and root-filesystem utilization alarms keyed to the root filesystem metric dimensions
+- publishes `mem_used_percent`, `mem_available`, `swap_used_percent`, root `disk_used_percent`, and root `disk_inodes_used_percent`
+- creates memory utilization, available-memory, swap warning, swap critical, root-filesystem utilization, and root-inode utilization alarms keyed to the root filesystem metric dimensions where applicable
 
 If `alarm_notification_email` is set, Terraform also creates an SNS topic and email subscription for those alarms. AWS will send a confirmation email before notifications begin.
 

@@ -54,6 +54,7 @@ write_files:
           "metrics_collected": {
             "mem": {
               "measurement": [
+                "available",
                 "used_percent"
               ]
             },
@@ -64,6 +65,7 @@ write_files:
             },
             "disk": {
               "measurement": [
+                "inodes_used_percent",
                 "used_percent"
               ],
               "resources": [
