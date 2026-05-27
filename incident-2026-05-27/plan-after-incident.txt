@@ -1,0 +1,28 @@
+[0m[1mdata.aws_availability_zones.available: Reading...[0m[0m
+[0m[1maws_vpc.craftalism[0]: Refreshing state... [id=vpc-0d8524cd20086d6e6][0m
+[0m[1maws_iam_role.craftalism_host_metrics[0]: Refreshing state... [id=craftalism-production-host-metrics][0m
+[0m[1mdata.aws_availability_zones.available: Read complete after 1s [id=us-east-1][0m
+[0m[1maws_iam_role_policy_attachment.craftalism_host_metrics[0]: Refreshing state... [id=craftalism-production-host-metrics-20260411003959027900000001][0m
+[0m[1maws_iam_instance_profile.craftalism_host_metrics[0]: Refreshing state... [id=craftalism-production-host-metrics][0m
+[0m[1maws_internet_gateway.craftalism[0]: Refreshing state... [id=igw-0f1acf6b7475d9fb7][0m
+[0m[1maws_subnet.public[0]: Refreshing state... [id=subnet-0b3aee5f115763e33][0m
+[0m[1maws_security_group.craftalism: Refreshing state... [id=sg-001bc10897f76b6c9][0m
+[0m[1maws_route_table.public[0]: Refreshing state... [id=rtb-009870f00f2e8c9c8][0m
+[0m[1maws_route_table_association.public[0]: Refreshing state... [id=rtbassoc-0cf7cf8b3929971cf][0m
+[0m[1maws_instance.craftalism: Refreshing state... [id=i-0c86fc9c79da38b59][0m
+[0m[1maws_cloudwatch_metric_alarm.instance_status_check_failed: Refreshing state... [id=craftalism-production-instance-status-check-failed][0m
+[0m[1maws_cloudwatch_metric_alarm.instance_cpu_credit_low[0]: Refreshing state... [id=craftalism-production-instance-cpu-credit-low][0m
+[0m[1maws_cloudwatch_metric_alarm.instance_memory_available_low[0]: Refreshing state... [id=craftalism-production-instance-memory-available-low][0m
+[0m[1maws_cloudwatch_metric_alarm.instance_cpu_high: Refreshing state... [id=craftalism-production-instance-cpu-high][0m
+[0m[1maws_eip.craftalism[0]: Refreshing state... [id=eipalloc-07ae7201079512704][0m
+[0m[1maws_cloudwatch_metric_alarm.instance_root_filesystem_high[0]: Refreshing state... [id=craftalism-production-instance-root-filesystem-high][0m
+[0m[1maws_cloudwatch_metric_alarm.instance_cpu_credit_critical[0]: Refreshing state... [id=craftalism-production-instance-cpu-credit-critical][0m
+[0m[1maws_cloudwatch_metric_alarm.instance_swap_warning[0]: Refreshing state... [id=craftalism-production-instance-swap-warning][0m
+[0m[1maws_cloudwatch_metric_alarm.instance_root_inodes_high[0]: Refreshing state... [id=craftalism-production-instance-root-inodes-high][0m
+[0m[1maws_cloudwatch_metric_alarm.instance_memory_high[0]: Refreshing state... [id=craftalism-production-instance-memory-high][0m
+[0m[1maws_cloudwatch_metric_alarm.instance_swap_critical[0]: Refreshing state... [id=craftalism-production-instance-swap-critical][0m
+
+[0m[1m[32mNo changes.[0m[1m Your infrastructure matches the configuration.[0m
+
+[0mTerraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.

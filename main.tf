@@ -249,7 +249,8 @@ resource "aws_instance" "craftalism" {
   }
 
   lifecycle {
-    ignore_changes = [associate_public_ip_address]
+    ignore_changes  = [associate_public_ip_address]
+    prevent_destroy = true
   }
 
   tags = merge(local.common_tags, { Name = "${local.name_prefix}-ec2" })
