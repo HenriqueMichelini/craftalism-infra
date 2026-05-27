@@ -8,6 +8,7 @@ This repository provisions the minimum AWS resources required by the 2026-04-08 
 - one EC2 instance for the full hobby-scale stack
 - one security group that exposes Minecraft plus HTTP/HTTPS edge entry points
 - optional SSH restricted to explicit operator CIDRs
+- EC2 lifecycle safeguards against accidental production instance replacement
 - optional Elastic IP and Route53 records for stable public endpoints
 - optional repo-local AWS cost budget alerts for supplemental monthly cost visibility
 - host bootstrap for Docker, host memory guardrails, and a Caddy edge proxy with automatic TLS
@@ -133,6 +134,9 @@ terraform plan -out=tfplan
 terraform apply tfplan
 ```
 
+Never apply directly from a fresh, unreviewed plan in production. Save the exact
+plan with `terraform plan -out=tfplan`, inspect it, and apply that saved plan.
+
 For one-off local-state testing, you can still run:
 
 ```bash
@@ -161,6 +165,10 @@ Public ingress is intentionally limited to:
 - `443/tcp` for HTTPS
 - `80/tcp` for HTTP to HTTPS redirect
 - `22/tcp` only when `ssh_allowed_cidrs` is explicitly set
+
+Changing `ssh_allowed_cidrs` should only update security group ingress; it must
+not update or replace `aws_instance.craftalism`. Leave `ssh_allowed_cidrs = []`
+to keep SSH closed at the security-group layer.
 
 The security group does not publish:
 
@@ -260,6 +268,24 @@ Host-level memory tuning created by this repo:
 - `/etc/systemd/journald.conf.d/craftalism.conf`
 - `/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json` when `enable_host_metrics = true`
 
+`user_data` is first-boot bootstrap, not runtime configuration management. Do
+not use cloud-init edits as a routine deployment mechanism for a stateful VPS.
+Runtime app deployment and config changes should happen through controlled
+deployment tooling such as `craftalism-deployment`, SSH/SSM, Ansible, CI/CD, or
+Docker Compose updates.
+
+For production safety, `aws_instance.craftalism` keeps:
+
+- `lifecycle.prevent_destroy = true`
+- `disable_api_termination = true`
+- `user_data_replace_on_change = false`
+- root EBS `delete_on_termination = false`
+
+`user_data_replace_on_change = true` is dangerous for this stateful single-node
+host because any rendered cloud-init change can force EC2 replacement. Stop
+before applying any plan that shows `-/+`, `forces replacement`, `destroy`, or
+replacement of `aws_instance.craftalism`.
+
 ## Validation
 
 This repo includes a GitHub Actions workflow that runs:
@@ -268,6 +294,7 @@ This repo includes a GitHub Actions workflow that runs:
 - `terraform init -backend=false`
 - `terraform validate`
 - `./scripts/check_ingress_policy.sh`
+- `./scripts/check_instance_safety.sh`
 
 CI runs these checks on pull requests and pushes to `main`.
 
@@ -278,6 +305,7 @@ terraform fmt -check
 terraform init -backend=false
 terraform validate
 ./scripts/check_ingress_policy.sh
+./scripts/check_instance_safety.sh
 ```
 
 ## First Deploy

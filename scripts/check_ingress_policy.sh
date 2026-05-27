@@ -80,8 +80,12 @@ for block in collect_named_blocks(body, r'^\s*ingress\s*{'):
         print(f"Ingress block exposes unapproved port {from_port}", file=sys.stderr)
         sys.exit(1)
 
-    if from_port == 22 and "var.ssh_allowed_cidrs" in cidrs:
-        print("Static SSH ingress must not reference var.ssh_allowed_cidrs directly; keep SSH opt-in via the dynamic block", file=sys.stderr)
+    if from_port == 22:
+        print("Static SSH ingress is not allowed; keep SSH opt-in via the dynamic block", file=sys.stderr)
+        sys.exit(1)
+
+    if "var.ssh_allowed_cidrs" in cidrs:
+        print("Static ingress must not reference var.ssh_allowed_cidrs; keep SSH isolated to the dynamic block", file=sys.stderr)
         sys.exit(1)
 
     seen_ports.add(from_port)
@@ -109,6 +113,10 @@ missing_ports = required_static_ports - seen_ports
 if missing_ports:
     ports = ", ".join(str(port) for port in sorted(missing_ports))
     print(f"Missing required static ingress ports: {ports}", file=sys.stderr)
+    sys.exit(1)
+
+if len(re.findall(r'\bvar\.ssh_allowed_cidrs\b', main_tf)) != 1:
+    print("var.ssh_allowed_cidrs must only be referenced by the dynamic SSH ingress block", file=sys.stderr)
     sys.exit(1)
 
 print("Ingress policy check passed.")

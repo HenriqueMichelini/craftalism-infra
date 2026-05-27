@@ -213,7 +213,8 @@ resource "aws_instance" "craftalism" {
   key_name                    = var.key_name
   iam_instance_profile        = var.enable_host_metrics ? aws_iam_instance_profile.craftalism_host_metrics[0].name : null
   monitoring                  = var.enable_detailed_monitoring
-  user_data_replace_on_change = true
+  disable_api_termination     = true
+  user_data_replace_on_change = false
 
   user_data = templatefile("${path.module}/templates/cloud-init.yaml.tftpl", {
     dashboard_hostname                 = var.dashboard_hostname

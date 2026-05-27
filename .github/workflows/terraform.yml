@@ -30,3 +30,6 @@ jobs:
 
       - name: Ingress policy check
         run: ./scripts/check_ingress_policy.sh
+
+      - name: Instance safety check
+        run: ./scripts/check_instance_safety.sh

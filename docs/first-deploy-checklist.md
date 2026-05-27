@@ -46,6 +46,7 @@ Use this checklist before the first real `terraform plan` and first EC2 deployme
 
 - Restrict `ssh_allowed_cidrs` to your current public IP or VPN CIDR.
 - Leave `ssh_allowed_cidrs = []` if SSH should remain closed.
+- Confirm SSH CIDR changes only affect security group ingress and do not replace `aws_instance.craftalism`.
 - Confirm that only these internet-facing ports are intended:
   - `25565`
   - `80`
@@ -136,6 +137,18 @@ Review the plan and confirm it includes:
 - EC2 detailed monitoring
 - CloudWatch alarms for host health and CPU pressure
 - optional Route53 records only if requested
+
+Stop before apply if the plan shows `-/+`, `forces replacement`, `destroy`, or
+replacement of `aws_instance.craftalism`. Production applies must use the exact
+reviewed plan artifact:
+
+```bash
+terraform plan -out=tfplan
+terraform apply tfplan
+```
+
+Do not run `terraform apply` in production without first saving and reviewing a
+plan file.
 
 ## 9. First Apply
 

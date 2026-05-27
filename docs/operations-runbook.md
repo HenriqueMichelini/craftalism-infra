@@ -39,24 +39,39 @@ terraform fmt -check -recursive
 terraform init -backend=false
 terraform validate
 terraform plan -out=tfplan
+./scripts/check_instance_safety.sh tfplan
 ```
 
 3. Review for unexpected changes, especially:
    - VPC or subnet recreation
    - security group ingress
    - instance replacement
+   - `-/+`, `forces replacement`, or `destroy` on `aws_instance.craftalism`
    - monitoring or alarm threshold changes
    - budget changes
    - DNS record changes
-4. Apply only after the plan is understood:
+4. Apply only after the saved plan is understood:
 
 ```bash
 terraform apply tfplan
 ```
 
+Changing `ssh_allowed_cidrs` should only affect security group ingress. It must
+not update or replace `aws_instance.craftalism`.
+
+`user_data` is first-boot bootstrap, not runtime configuration management.
+Changing cloud-init input variables is not a safe way to deploy application or
+host runtime changes on this stateful VPS. Use deploy scripts, SSH/SSM, Ansible,
+CI/CD, Docker Compose updates, or another controlled deployment process instead
+of replacing the EC2 instance.
+
 ## Destroy Safety
 
 This repo provisions the public host for the whole stack. Do not run `terraform destroy` casually.
+
+`aws_instance.craftalism` is protected with Terraform `prevent_destroy`, EC2 API
+termination protection, and root EBS `delete_on_termination = false`. Treat any
+plan that tries to delete or replace it as an incident until proven intentional.
 
 Before any destructive action:
 
