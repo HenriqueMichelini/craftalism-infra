@@ -65,6 +65,44 @@ host runtime changes on this stateful VPS. Use deploy scripts, SSH/SSM, Ansible,
 CI/CD, Docker Compose updates, or another controlled deployment process instead
 of replacing the EC2 instance.
 
+## Syncing The Production Edge
+
+Use the repo-owned sync script on the EC2 host when the live Caddy edge has
+drifted from the intended dashboard, API, and auth routes. Provide the values
+through the environment so credentials are not committed or passed as command
+arguments:
+
+```bash
+export EDGE_DASHBOARD_HOSTNAME='dashboard.craftalism.com'
+export EDGE_API_HOSTNAME='api.craftalism.com'
+export EDGE_AUTH_HOSTNAME='auth.craftalism.com'
+export EDGE_DASHBOARD_BASIC_AUTH_USERNAME='craftalism'
+export EDGE_DASHBOARD_BASIC_AUTH_PASSWORD_HASH='<bcrypt-hash>'
+
+sudo --preserve-env=EDGE_DASHBOARD_HOSTNAME,EDGE_API_HOSTNAME,EDGE_AUTH_HOSTNAME,EDGE_DASHBOARD_BASIC_AUTH_USERNAME,EDGE_DASHBOARD_BASIC_AUTH_PASSWORD_HASH \
+  ./scripts/sync_edge_config.sh
+```
+
+The script validates the candidate configuration inside the existing Caddy
+container, installs it atomically, recreates `craftalism-edge` from the
+infra-owned `/opt/craftalism/edge/docker-compose.yml`, and verifies that an
+unauthenticated dashboard request returns HTTP 401 with a `WWW-Authenticate`
+header. It does not replace the EC2 instance or change application containers.
+
+Recreating from the infra-owned Compose file also recovers from the optional
+standalone edge in `craftalism-deployment` displacing the normal production
+edge. Do not run both edge profiles on the same host.
+
+Then verify authenticated access with the plaintext password held by the
+operator:
+
+```bash
+curl -I -u 'craftalism:<password>' https://dashboard.craftalism.com/
+```
+
+Expected result: authenticated access reaches the dashboard upstream and does
+not return HTTP 401.
+
 ## Destroy Safety
 
 This repo provisions the public host for the whole stack. Do not run `terraform destroy` casually.

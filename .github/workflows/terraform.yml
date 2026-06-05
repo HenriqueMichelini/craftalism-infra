@@ -33,3 +33,6 @@ jobs:
 
       - name: Instance safety check
         run: ./scripts/check_instance_safety.sh
+
+      - name: Edge configuration check
+        run: ./scripts/check_edge_config.sh
