@@ -11,6 +11,7 @@ This repository provisions the minimum AWS resources required by the 2026-04-08 
 - EC2 lifecycle safeguards against accidental production instance replacement
 - optional Elastic IP and Route53 records for stable public endpoints
 - optional repo-local AWS cost budget alerts for supplemental monthly cost visibility
+- CloudWatch alarm Free Tier guardrails for repo-managed alarms and optional IAM denial of manual alarm writes
 - host bootstrap for Docker, host memory guardrails, and a Caddy edge proxy with automatic TLS
 - EC2 observability through detailed monitoring, optional in-guest host metrics, and CloudWatch alarms
 
@@ -215,12 +216,43 @@ These changes reduce OOM risk on small EC2 instances, but they do not replace ru
 
 ## Cost Guardrails
 
+Terraform blocks configurations where this repo would manage more CloudWatch
+alarm metrics than `cloudwatch_alarm_metric_free_tier_limit`. The default is
+`10`, matching the CloudWatch standard alarm Free Tier ceiling. This is a hard
+repo-local guardrail: if a future alarm change would exceed the configured
+limit, `terraform plan`/`terraform apply` fails before changing AWS.
+
+The current alarm count depends on the selected configuration:
+
+- base EC2 alarms: 2
+- burstable `t*` instance CPU-credit alarms: +2
+- host memory and root filesystem alarms when `enable_host_metrics = true`: +4
+- swap warning and critical alarms when host metrics and swap are enabled: +2
+
+With the example `t3.small`, `enable_host_metrics = true`, and swap enabled,
+the repo manages 10 CloudWatch alarm metrics.
+
+Terraform can also create an IAM managed policy that denies direct CloudWatch
+alarm writes:
+
+```hcl
+create_cloudwatch_alarm_write_guardrail_policy = true
+cloudwatch_alarm_write_guardrail_role_names    = ["operator-role-name"]
+```
+
+Attach this only to human/operator roles that should not create or delete
+alarms manually. Do not attach it to the Terraform deployment role, or Terraform
+will be unable to manage the alarms in this repo. This IAM guardrail prevents
+manual bypass through those roles; it does not control principals that do not
+receive the policy.
+
 If `budget_alert_email` is set, Terraform creates a repo-local monthly AWS cost budget with alerts at:
 
 - 80% of the configured limit
 - 100% of the configured limit
 
-This is an alerting mechanism only. AWS Budgets does not hard-stop spending.
+This is an alerting mechanism only. AWS Budgets does not hard-stop spending, and
+CloudWatch billing updates are not instantaneous.
 
 If you already enforce account-level AWS budget controls outside this repo, leave `budget_alert_email = null` and treat the repo-local budget as unnecessary or supplemental only.
 

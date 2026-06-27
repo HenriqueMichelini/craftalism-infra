@@ -48,6 +48,16 @@ output "instance_alarm_topic_arn" {
   value       = try(aws_sns_topic.instance_alarms[0].arn, null)
 }
 
+output "cloudwatch_alarm_metric_count" {
+  description = "Number of repo-managed CloudWatch alarm metrics counted against the configured alarm Free Tier guardrail."
+  value       = local.cloudwatch_alarm_metric_count
+}
+
+output "cloudwatch_alarm_write_guardrail_policy_arn" {
+  description = "IAM managed policy ARN that denies direct CloudWatch alarm writes, if the guardrail policy was created."
+  value       = try(aws_iam_policy.cloudwatch_alarm_write_guardrail[0].arn, null)
+}
+
 output "instance_alarm_names" {
   description = "CloudWatch alarm names created for the Craftalism host."
   value = compact([

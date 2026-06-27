@@ -21,6 +21,13 @@ locals {
     var.api_hostname,
     var.auth_hostname,
   ])
+
+  cloudwatch_alarm_metric_count = (
+    2 +
+    (local.is_burstable_instance_family ? 2 : 0) +
+    (var.enable_host_metrics ? 4 : 0) +
+    (var.enable_host_metrics && var.swap_size_mb > 0 ? 2 : 0)
+  )
 }
 
 moved {
@@ -101,6 +108,13 @@ check "route53_zone_input" {
       var.route53_zone_id != null
     )
     error_message = "route53_zone_id must be set when create_route53_records is true."
+  }
+}
+
+check "cloudwatch_alarm_free_tier_guardrail" {
+  assert {
+    condition     = local.cloudwatch_alarm_metric_count <= var.cloudwatch_alarm_metric_free_tier_limit
+    error_message = "This configuration would create ${local.cloudwatch_alarm_metric_count} CloudWatch alarm metrics, exceeding cloudwatch_alarm_metric_free_tier_limit (${var.cloudwatch_alarm_metric_free_tier_limit}). Disable host metrics/swap alarms, use a non-burstable instance type, or intentionally raise the limit after accepting CloudWatch alarm costs."
   }
 }
 
@@ -290,6 +304,38 @@ resource "aws_iam_instance_profile" "craftalism_host_metrics" {
 
   name = "${local.name_prefix}-host-metrics"
   role = aws_iam_role.craftalism_host_metrics[0].name
+}
+
+resource "aws_iam_policy" "cloudwatch_alarm_write_guardrail" {
+  count = var.create_cloudwatch_alarm_write_guardrail_policy ? 1 : 0
+
+  name        = "${local.name_prefix}-deny-cloudwatch-alarm-writes"
+  description = "Denies direct CloudWatch alarm writes for operator principals so alarms stay managed by Terraform."
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "DenyCloudWatchAlarmWrites"
+        Effect = "Deny"
+        Action = [
+          "cloudwatch:PutMetricAlarm",
+          "cloudwatch:PutCompositeAlarm",
+          "cloudwatch:DeleteAlarms"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = merge(local.common_tags, { Name = "${local.name_prefix}-deny-cloudwatch-alarm-writes" })
+}
+
+resource "aws_iam_role_policy_attachment" "cloudwatch_alarm_write_guardrail" {
+  for_each = var.create_cloudwatch_alarm_write_guardrail_policy ? toset(var.cloudwatch_alarm_write_guardrail_role_names) : toset([])
+
+  role       = each.value
+  policy_arn = aws_iam_policy.cloudwatch_alarm_write_guardrail[0].arn
 }
 
 resource "aws_eip" "craftalism" {

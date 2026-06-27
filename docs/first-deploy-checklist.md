@@ -74,6 +74,8 @@ Use this checklist before the first real `terraform plan` and first EC2 deployme
 - Set `budget_alert_email` to a mailbox you actively read.
 - Set `alarm_notification_email` to a mailbox you actively read.
 - Set `monthly_budget_limit_usd` to a low number such as `5`.
+- Keep `cloudwatch_alarm_metric_free_tier_limit = 10` unless you intentionally accept CloudWatch alarm charges.
+- Attach the CloudWatch alarm write guardrail policy only to operator roles, not to the Terraform deployment role.
 - Remember AWS Budgets sends alerts only; it does not block charges.
 - Remember CloudWatch alarm email delivery starts only after the SNS subscription confirmation step is completed.
 - Treat this budget as total AWS cost alerting for the deployment boundary, not just EC2 compute.

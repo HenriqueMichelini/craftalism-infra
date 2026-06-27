@@ -250,6 +250,29 @@ variable "monthly_budget_limit_usd" {
   default     = 5
 }
 
+variable "cloudwatch_alarm_metric_free_tier_limit" {
+  description = "Maximum repo-managed CloudWatch alarm metrics allowed before Terraform fails the plan/apply. Keep at 10 to stay within the standard CloudWatch alarm Free Tier."
+  type        = number
+  default     = 10
+
+  validation {
+    condition     = var.cloudwatch_alarm_metric_free_tier_limit >= 0
+    error_message = "cloudwatch_alarm_metric_free_tier_limit must be zero or greater."
+  }
+}
+
+variable "create_cloudwatch_alarm_write_guardrail_policy" {
+  description = "Whether to create an IAM managed policy that denies direct CloudWatch alarm writes for operator principals."
+  type        = bool
+  default     = true
+}
+
+variable "cloudwatch_alarm_write_guardrail_role_names" {
+  description = "IAM role names that should receive the CloudWatch alarm write deny policy. Do not include the Terraform deployment role."
+  type        = set(string)
+  default     = []
+}
+
 variable "cpu_utilization_alarm_threshold_percent" {
   description = "Average CPU utilization percentage that triggers the sustained host-pressure alarm."
   type        = number

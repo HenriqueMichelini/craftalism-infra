@@ -28,6 +28,11 @@ create_route53_records = false
 budget_alert_email       = "henrique@example.com"
 alarm_notification_email = "henrique@example.com"
 monthly_budget_limit_usd = 5
+cloudwatch_alarm_metric_free_tier_limit = 10
+
+# Attach the CloudWatch alarm write deny policy to operator roles that should not
+# create/delete alarms manually. Do not include the Terraform deployment role.
+cloudwatch_alarm_write_guardrail_role_names = []
 
 tags = {
   Owner = "henrique"
