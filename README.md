@@ -2,7 +2,7 @@
 
 Terraform infrastructure for the Craftalism AWS deployment boundary.
 
-This repository provisions the minimum AWS resources required by the 2026-04-08 Craftalism infra audit:
+This repository provisions:
 
 - one low-cost VPC with a single public subnet by default
 - one EC2 instance for the full hobby-scale stack
@@ -49,21 +49,27 @@ This implementation follows Craftalism governance:
 
 ```text
 craftalism-infra/
-  docs/
-  templates/
   .github/workflows/
+  docs/
+  scripts/
+  templates/
+  backend.hcl.example
   main.tf
-  variables.tf
   outputs.tf
-  versions.tf
   terraform.tfvars.example
+  variables.tf
+  versions.tf
 ```
 
 ## Prerequisites
 
 - Terraform 1.6+
-- AWS credentials with permission to manage EC2, VPC, EIP, security groups, budgets, and optional Route53 records
-- a target AWS region
+- AWS credentials for the target account and region
+- permissions for EC2, VPC networking, security groups, and the resources enabled
+  by your configuration (such as EIP, IAM, CloudWatch, SNS, AWS Budgets, and
+  Route53)
+- Bash and Python 3 for the repository policy checks
+- Docker only if you use the password-hash command below
 - placeholder or real hostnames for:
   - dashboard
   - API
@@ -83,7 +89,8 @@ cp terraform.tfvars.example terraform.tfvars
 docker run --rm caddy:2.10.0-alpine caddy hash-password --plaintext 'replace-me'
 ```
 
-3. Fill in `terraform.tfvars` with your region, hostnames, budget email, and restricted SSH CIDRs.
+3. Fill in `terraform.tfvars` with your region, hostnames, optional alert email
+addresses, and restricted SSH CIDRs.
 
 Set an explicit AMI ID for deterministic production deployments:
 
@@ -96,6 +103,12 @@ Only enable automatic AMI lookup for disposable environments where reproducibili
 ```hcl
 allow_automatic_ami_selection = true
 ```
+
+Automatic selection uses the latest Canonical Ubuntu 24.04 LTS amd64
+`hvm-ssd-gp3` image. A custom AMI must support cloud-init and the Debian/Ubuntu
+package and service commands used by
+[`templates/cloud-init.yaml.tftpl`](./templates/cloud-init.yaml.tftpl). The
+configured `operator_username` must already exist on the image.
 
 For small instances, keep the default host guardrails unless you have measured reason to change them:
 
@@ -120,31 +133,32 @@ This is the default and is the right choice for a brand-new AWS account. Only se
 
 If you reuse an existing subnet and keep `associate_eip = false`, that subnet must auto-assign public IPv4 addresses or the instance will not be reachable from the internet.
 
-5. For repeatable environments, prepare remote state:
+5. Initialize Terraform, validate the configuration, and create a saved plan:
 
 ```bash
-cp backend.hcl.example backend.hcl
-# edit backend.hcl with your S3 bucket and DynamoDB lock table
+terraform init
+terraform validate
+terraform plan -out=tfplan
+./scripts/check_instance_safety.sh tfplan
 ```
 
-6. Apply the infrastructure:
+The current Terraform configuration does not declare a remote backend and
+therefore uses local state. `backend.hcl.example` is a reference for an S3
+backend, but it cannot be used until an `s3` backend block is added to the
+Terraform configuration. The referenced bucket and DynamoDB lock table are not
+created by this module.
+
+Protect Terraform state wherever it is stored because it contains rendered EC2
+user data, including the dashboard password hash.
+
+6. Inspect the saved plan, then apply it:
 
 ```bash
-terraform init -backend-config=backend.hcl
-terraform plan -out=tfplan
 terraform apply tfplan
 ```
 
 Never apply directly from a fresh, unreviewed plan in production. Save the exact
 plan with `terraform plan -out=tfplan`, inspect it, and apply that saved plan.
-
-For one-off local-state testing, you can still run:
-
-```bash
-terraform init
-terraform plan -out=tfplan
-terraform apply tfplan
-```
 
 ## DNS Model
 
@@ -258,7 +272,8 @@ If you already enforce account-level AWS budget controls outside this repo, leav
 
 ## Instance Monitoring
 
-This repo enables EC2 detailed monitoring by default so host metrics publish at one-minute resolution.
+This repo enables EC2 detailed monitoring by default so supported EC2 metrics
+publish at one-minute resolution.
 
 Terraform also creates a minimal CloudWatch alarm set for the EC2 host:
 
@@ -272,7 +287,9 @@ When `enable_host_metrics = true`, Terraform also:
 - attaches the `CloudWatchAgentServerPolicy` through an EC2 instance profile
 - installs the Amazon CloudWatch Agent during bootstrap
 - publishes `mem_used_percent`, `mem_available`, `swap_used_percent`, root `disk_used_percent`, and root `disk_inodes_used_percent`
-- creates memory utilization, available-memory, swap warning, swap critical, root-filesystem utilization, and root-inode utilization alarms keyed to the root filesystem metric dimensions where applicable
+- creates memory utilization, available-memory, root-filesystem utilization, and
+  root-inode utilization alarms, plus swap warning and critical alarms when
+  `swap_size_mb > 0`
 
 If `alarm_notification_email` is set, Terraform also creates an SNS topic and email subscription for those alarms. AWS will send a confirmation email before notifications begin.
 
@@ -298,7 +315,8 @@ Host-level memory tuning created by this repo:
 - `/etc/sysctl.d/99-craftalism-memory.conf`
 - `/etc/docker/daemon.json` log rotation defaults
 - `/etc/systemd/journald.conf.d/craftalism.conf`
-- `/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json` when `enable_host_metrics = true`
+- `/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json` (the agent
+  is installed and started only when `enable_host_metrics = true`)
 
 `user_data` is first-boot bootstrap, not runtime configuration management. Do
 not use cloud-init edits as a routine deployment mechanism for a stateful VPS.
@@ -318,26 +336,44 @@ host because any rendered cloud-init change can force EC2 replacement. Stop
 before applying any plan that shows `-/+`, `forces replacement`, `destroy`, or
 replacement of `aws_instance.craftalism`.
 
+## Updating the Live Edge
+
+Changing cloud-init does not update an existing instance. When the live Caddy
+routes or dashboard authentication drift, use
+[`scripts/sync_edge_config.sh`](./scripts/sync_edge_config.sh) on the host. The
+script takes the hostnames and basic-auth credentials from `EDGE_*` environment
+variables, validates the candidate configuration in Caddy, recreates the
+infra-owned `craftalism-edge` container, and verifies that unauthenticated
+dashboard access returns HTTP 401. It rolls back to the previous container and
+configuration when recreation or verification fails.
+
+See [the operations runbook](./docs/operations-runbook.md#syncing-the-production-edge)
+for the required environment variables, privileged invocation, and follow-up
+check. Do not run the infra-owned edge and the optional standalone edge from
+`craftalism-deployment` on the same host.
+
 ## Validation
 
 This repo includes a GitHub Actions workflow that runs:
 
-- `terraform fmt -check`
+- `terraform fmt -check -recursive`
 - `terraform init -backend=false`
 - `terraform validate`
 - `./scripts/check_ingress_policy.sh`
 - `./scripts/check_instance_safety.sh`
+- `./scripts/check_edge_config.sh`
 
 CI runs these checks on pull requests and pushes to `main`.
 
 Local verification:
 
 ```bash
-terraform fmt -check
+terraform fmt -check -recursive
 terraform init -backend=false
 terraform validate
 ./scripts/check_ingress_policy.sh
 ./scripts/check_instance_safety.sh
+./scripts/check_edge_config.sh
 ```
 
 ## First Deploy
@@ -349,7 +385,7 @@ Before the first real AWS apply, use:
 
 These documents cover:
 
-- remote state preparation
+- Terraform state considerations
 - first-account network bootstrap
 - AWS and DNS preflight checks
 - first `terraform plan` and `apply`
